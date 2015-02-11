@@ -1,3 +1,4 @@
+from django.apps import AppConfig
 from django.contrib.auth.hashers import check_password, make_password, is_password_usable
 from django.db import models
 from sculpt.common import Enumeration
@@ -5,6 +6,25 @@ from sculpt.model_tools.hash_generator import ModelHashGenerator
 import datetime
 
 # Useful things to include in Model definitions
+
+# a really simple convert-to-unicode method which
+# is better than Django's default; good for
+# prototyping, but a real class needs more
+#
+class SimpleUnicodeMixin(object):
+
+    def __unicode__(self):
+        if hasattr(self, 'title'):
+            return u'[%(cls)s:%(id)s] %(title)s' % {
+                    'cls': self.__class__.__name__,
+                    'id': str(self.id),     # in case id is None, don't barf
+                    'title': self.title,
+                }
+        else:
+            return u'[%(cls)s:%(id)s]' % {
+                    'cls': self.__class__.__name__,
+                    'id': str(self.id),     # in case id is None, don't barf
+                }
 
 # AUTO-GENERATED HASH ID MODEL
 #
@@ -283,16 +303,39 @@ class PasswordMixin(object):
 # of choices for a particular field, but we expect or require the
 # concrete implementation to override this with an app-specific
 # list. Django gets a bit confused by this because of how it builds
-# fields incrementally from base classes on up, so we need to
-# override the constructor for all such classes and have them reset
-# the choice list for the affected fields:
+# fields incrementally from base classes on up. This is unhelpful.
 #
-#    def __init__(self, *args, **kwargs):
-#        super(SomeAbstractClass, self).__init__(*args, **kwargs)
-#        self._set_field_choices(field_name = 'my_customized_field', choices = self.ENUMERATION_NAME)
+# To fix this, we could simply reset the choice list every time we
+# instantiate an object. This works, but Django's admin "add" pages
+# generate their form based on the class object, not an instance
+# object, so they won't see the updated choice list.
+#
+# It seems easy to just modify the choice list in the class object
+# after it's been defined. The problem is that the mechanism for
+# fetching the field (Foo._meta.get_field_by_name) isn't usable
+# until the app registry is finished. Reproducing the logic here
+# makes no sense.
+#
+# Instead, we take note of the request to update the model fields,
+# listen for the class_prepared signal, and then update it. So,
+# after a class is defined, call the method to register the update
+# request, and it will happen automagically (ugh) once Django gets
+# around to finishing the model loading.
+#
+#   class Foo(AbstractBaseClass):
+#       ENUMERATION_NAME = Enumeration( ... )
+#
+#   Foo._register_field_choices('my_field', Foo.ENUMERATION_NAME)
 #
 # We call _set_field_choices for each affected field. The function
 # itself is included in this mix-in.
+#
+# NOTE: you only have to do this if you actually override the
+# enumeration from the base class's version. IF it's unchanged,
+# you can skip this step.
+#
+# NOTE: YOU MUST ADD sculpt.model_tools TO YOUR INSTALLED_APPS
+# SETTING.
 #
 class OverridableChoicesMixin(object):
 
@@ -313,8 +356,24 @@ class OverridableChoicesMixin(object):
     #
     # NOTE: we accept the actual choices OR an Enumeration.
     #
-    def _set_field_choices(self, field_name, choices):
+    @classmethod
+    def _set_field_choices(cls, field_name, choices):
         if isinstance(choices, Enumeration):
             choices = choices.choices
-        self._meta.get_field_by_name(field_name)[0]._choices = choices
+        cls._meta.get_field_by_name(field_name)[0]._choices = choices
 
+    @classmethod
+    def _register_field_choices(cls, field_name, choices):
+        field_choices[cls] = (field_name, choices)
+    
+# the signal handler that updates choices after classes are prepared    
+field_choices = {}
+
+class OverridableChoicesConfig(AppConfig):
+
+    name = "sculpt.model_tools"
+    verbose_name = "Code Sculpture Model Tools"
+
+    def ready(self):
+        for cls, args in field_choices.iteritems():
+            cls._set_field_choices(*args)
