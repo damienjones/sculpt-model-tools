@@ -327,15 +327,17 @@ class PasswordMixin(object):
 #
 #   Foo._register_field_choices('my_field', Foo.ENUMERATION_NAME)
 #
-# We call _set_field_choices for each affected field. The function
-# itself is included in this mix-in.
+# We call _register_field_choices for each affected field. The
+# function itself is included in this mix-in.
 #
 # NOTE: you only have to do this if you actually override the
 # enumeration from the base class's version. IF it's unchanged,
 # you can skip this step.
 #
 # NOTE: YOU MUST ADD sculpt.model_tools TO YOUR INSTALLED_APPS
-# SETTING.
+# SETTING or Django never finds the bit of code that acts on
+# the registered changes after the app registry (and model
+# loading) is complete.
 #
 class OverridableChoicesMixin(object):
 
@@ -377,3 +379,219 @@ class OverridableChoicesConfig(AppConfig):
     def ready(self):
         for cls, args in field_choices.iteritems():
             cls._set_field_choices(*args)
+
+# SimpleTreeMixin
+#
+# There are many ways to implement tree structures in SQL and various
+# libraries for doing so. The simplest method is for each node to
+# reference its parent and to include a display order value that
+# applies amongst its siblings. This has the virtues of requiring only
+# changes to immediate siblings when nodes are inserted or reordered
+# and that moving whole sub-trees requires only a single field to be
+# changed.
+#
+# The downside to this method is that fetching all the descendants of
+# any particular node requires repeated queries to the database (one
+# per generation) and fetching all the ancestors does also. There are
+# schemes that optimize for that kind of query (such as the MPTT
+# scheme) at the expense of increased cost of updates.
+#
+# We observe that the cost of updates, especially with large tree
+# structures which may have multiple actively-modified areas at any
+# given time, is nothing to sneer at. (Inserting a node and requiring
+# 10,000 other nodes to be updated seems... unwise.) We also observe
+# that with large trees it is unlikely that the whole tree would be
+# presented to the user anyway, so being able to selectively limit
+# the number of generations of children fetched is actually a good
+# thing.
+#
+# To use this, you will need to define two fields within your class:
+#
+#   parent = models.ForeignKey('self', related_name = 'children', blank = True, null = True)
+#   display_order = models.IntegerField(default = 0)
+#
+class SimpleTreeMixin(object):
+
+    # get all ancestors, starting with the closest; if
+    # oldest_first is True, returns the farthest ancestor
+    # first instead (and it will return an iterator
+    # instead of a bare list, use list() if you need to)
+    #
+    # NOTE: because of the way children fetching works, if
+    # you locate the parents and then fetch the children
+    # you will not get the same Python object that you
+    # started with; you will get a copy of the same data
+    # from the database in a new Python object.
+    #
+    def get_parents(self, oldest_first = False):
+        ancestors = []
+        node = self
+        while node.parent is not None:
+            node = node.parent
+            ancestors.append(node)
+
+        if oldest_first:
+            return reversed(ancestors)
+        else:
+            return ancestors
+
+    # get the root node
+    #
+    # Similar parent-then-child fetching caveat as
+    # get_parents.
+    #
+    def get_root(self):
+        if self.parent_id is None:
+            return self
+        else:
+            return self.get_parents(oldest_first = True)[0]
+
+    # get all siblings
+    #
+    # NOTE: this is cached on the parent object.
+    #
+    def get_siblings(self, q = None, order_by = None, select_related = None):
+        return self.parent.get_children(q = q, order_by = order_by, select_related = select_related)
+        
+    # get immediate siblings
+    #
+    # Do these only if you need exactly one of these; if
+    # you need more than one, it's likely more efficient
+    # to use get_siblings() and work through the list.
+    #
+    def get_previous(self):
+        return self.__class__.objects.filter(
+                display_order_lt = self.display_order,
+            ).order_by('-display_order').first()
+        
+    def get_next(self):
+        return self.__class__.objects.filter(
+                display_order_gt = self.display_order,
+            ).order_by('display_order').first()
+        
+    # get children
+    # 
+    # You can specify the number of generations (-1 means
+    # "all", but this is dangerous if you're not sure how
+    # deep the rabbit hole goes), a Q object to filter
+    # children, an alternative ordering, and whether each
+    # node should automatically fetch related records.
+    #
+    # This is a class method, rather than an instance
+    # method, because it's very, very common to want to
+    # fetch the children for a list of nodes, not just
+    # one, and it's much more efficient to fetch them
+    # all at once. This method will fetch the children
+    # for each node in the nodes list you pass and store
+    # them in .children_list on each node; it will not
+    # return a useful value.
+    #
+    @classmethod
+    def fetch_children(cls, nodes, generations = 1, q = None, order_by = None, select_related = None):
+        from sculpt.model.tools import ModelTools
+        
+        # default sort order for children
+        if order_by is None:
+            order_by = [ 'display_order' ]
+        
+        # we test for equivalence to zero so that
+        # -1 can be passed for "all" (dangerous;
+        # if you know you need ALL nodes, not just
+        # all the children starting at a particular
+        # set of nodes, it's more efficient to use
+        # fetch_all_children below)
+        while generations != 0:
+            generations -= 1
+            
+            # do the complete fetch
+            ModelTools.fetch_related(nodes, 'children', q, order_by, select_related = select_related)
+            
+            # collect together all the fetched
+            # nodes, which are dispersed among
+            # the nodes we just queried about
+            new_nodes = []
+            for n in nodes:
+                new_nodes.extend(n.children_list)
+            
+            if len(new_nodes) == 0:
+                # no children were fetched; we can stop
+                break
+                
+            nodes = new_nodes
+            
+    # and, as a special-case method, we allow fetching
+    # the children of one specific node (ourselves)
+    def get_children(self, generations = 1, q = None, order_by = None, select_related = None):
+        return self.fetch_children([ self ], generations, q, order_by, select_related)
+
+    # sometimes we know we want all the children, and we
+    # want to fetch them all at once and then sort them
+    # out
+    #
+    # NOTE: nodes can either be a Model class object, or
+    # a list of Model instances; if a Model class object
+    # is given, a list of root nodes will be returned
+    #
+    @classmethod
+    def fetch_all_children(cls, nodes, q = None, order_by = None, select_related = None):
+
+        # default sort order for children
+        if order_by is None:
+            order_by = [ 'display_order' ]
+        
+        # we need to identify the model to query
+        if isinstance(nodes, models.Model):
+            node_class = nodes
+            node_ids = None
+            nodes = None
+            
+        else:
+            # if there are no nodes to fetch children for,
+            # we can quit early
+            if len(nodes) == 0:
+                return
+                
+            node_class = nodes[0].__class__
+            node_ids = [ n.id for n in nodes ]
+            
+        # fetch all the children
+        children = node_class.objects.all()
+        if node_ids:
+            children = children.exclude(id__in = node_ids)  # don't re-fetch these parents
+        if q is not None:
+            children = children.filter(q)
+        if order_by is not None:
+            children = children.order_by(*order_by)
+        if select_related is not None:
+            children = children.select_related(*select_related)
+        
+        # create a quick index to all the children and
+        # (if present) the original parents
+        node_index = dict([ (n.id,n) for n in children ])
+        if nodes is not None:
+            node_index.update(dict([ (n.id,n) for n in nodes ]))    # add the parents to the index
+
+        # now process all the children in order, assigning
+        # them to their parents' children_list
+        roots = []
+        for n in children:
+            n.children_list = []
+            if n.parent_id is None:
+                roots.append(n)
+        
+        for n in children:
+            if n.parent_id is not None and n.parent_id in node_index:
+                # only if we've fetched the parent; if we don't have
+                # the parent it means the q parameter was too strict
+                # and we omitted the parent when fetching "all" the
+                # children, which will result in additional queries
+                # when fetching the parent later (don't do that)
+                
+                # set object reference so Django doesn't load
+                # duplicates for each child
+                n.parent = node_index[n.parent_id]
+                
+                # add this node to the list of children, in order
+                n.parent.children_list.append(n)
+        
+        return roots

@@ -64,7 +64,7 @@ class ModelTools(object):
     # select_related method.
     #
     @classmethod
-    def fetch_related(cls, qs, related_field, q = None, order_by = None, results_field = None, id_list = None, select_related = None):
+    def fetch_related(cls, qs, related_field, q = None, order_by = None, results_field = None, id_list = None, select_related = None, fix_reverse_links = True):
         if results_field == None:
             results_field = related_field + '_list'
 
@@ -145,9 +145,15 @@ class ModelTools(object):
         qs_map = dict([ (r.id,r) for r in qs ])
 
         # now sift each related record (rr)
+        # while we are at it, we will (if asked) link the
+        # child record back to its parent, because Django
+        # doesn't know when it fetches the related records
+        # that we already have the original record
         for rr in rqs:
             r = qs_map[getattr(rr, related_model_field_id)] # get parent record
             getattr(r, results_field).append(rr)            # append results to list
+            if fix_reverse_links:
+                setattr(rr, related_model_field_name, r)    # link related object back to its parent
 
         return qs
 
