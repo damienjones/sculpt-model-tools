@@ -131,11 +131,21 @@ class ModelTools(object):
         # function parameter names on the fly
         rqs = related_model.objects.filter(**{ related_model_field_name +'_id__in': id_list })
 
-        if q != None:
+        if q is not None:
             rqs = rqs.filter(q)
-        if order_by != None:
+
+        if order_by is not None:
+            # a common mistake is to pass a single field name
+            # instead of a list; catch this and rework it
+            if isinstance(order_by, basestring):
+                order_by = [ order_by ]
             rqs = rqs.order_by(*order_by)
-        if select_related != None:
+
+        if select_related is not None:
+            # a common mistake is to pass a single field name
+            # instead of a list; catch this and rework it
+            if isinstance(select_related, basestring):
+                order_by = [ select_related ]
             rqs = rqs.select_related(*select_related)
 
         # place each related record with its proper parent

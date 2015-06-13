@@ -556,13 +556,25 @@ class SimpleTreeMixin(object):
             
         # fetch all the children
         children = node_class.objects.all()
+
         if node_ids:
             children = children.exclude(id__in = node_ids)  # don't re-fetch these parents
+
         if q is not None:
             children = children.filter(q)
+
         if order_by is not None:
+            # a common mistake is to pass a single field name
+            # instead of a list; catch this and rework it
+            if isinstance(order_by, basestring):
+                order_by = [ order_by ]
             children = children.order_by(*order_by)
+
         if select_related is not None:
+            # a common mistake is to pass a single field name
+            # instead of a list; catch this and rework it
+            if isinstance(select_related, basestring):
+                order_by = [ select_related ]
             children = children.select_related(*select_related)
         
         # create a quick index to all the children and
