@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Q
 from django.contrib.auth.models import AbstractBaseUser
 from django.utils import timezone
 
@@ -48,12 +49,22 @@ class AbstractSoftDelete(models.Model):
     def delete(self):
         raise Exception('This model requires a soft delete.')
 
-    def soft_delete(self):
-        self.date_deleted = timezone.now()
+    def soft_delete(self, date_deleted = None):
+        if date_deleted is None:
+            date_deleted = timezone.now()
+        self.date_deleted = date_deleted
         self.save(update_fields = ['date_deleted'])
 
     @property
     def is_deleted(self):
         return self.date_deleted != None
 
+    @classmethod
+    def is_not_deleted_q(cls):
+        return Q(date_deleted__isnull = True)
+
+    @classmethod
+    def is_deleted_q(cls):
+        return Q(date_deleted__isnull = False)
+    
 
