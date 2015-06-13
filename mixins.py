@@ -122,6 +122,9 @@ class AutoHashMixin(object):
         return super(AutoHashMixin, self).save(**kwargs)
 
 
+# a URL pattern fragment to match hashes
+AUTOHASH_URL_PATTERN = r'[-_0-9A-Za-z]{43}'
+ 
 # LoginMixin
 #
 # Logging in doesn't have anything to do with authentication
