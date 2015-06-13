@@ -423,10 +423,10 @@ class SimpleTreeMixin(object):
     # started with; you will get a copy of the same data
     # from the database in a new Python object.
     #
-    def get_parents(self, oldest_first = False):
+    def get_parents(self, oldest_first = False, stop_at_id = None):
         ancestors = []
         node = self
-        while node.parent is not None:
+        while node.parent is not None and (stop_at_id is None or stop_at_id != node.pk):
             node = node.parent
             ancestors.append(node)
 
@@ -434,6 +434,18 @@ class SimpleTreeMixin(object):
             return reversed(ancestors)
         else:
             return ancestors
+
+    # and a simpler, related question: is node A a
+    # child of node B?
+    def is_child_of(self, candidate_id, allow_self = True):
+        # something is often considered a child of itself;
+        # we test this first because get_parents will NOT
+        # include self in the list, but WILL stop (with
+        # an empty list) if self is the candidate
+        if self.pk == candidate_id:
+            return allow_self
+        ancestors = self.get_parents(stop_at_id = candidate_id)
+        return len(ancestors) > 0 and ancestors[-1].pk == candidate_id
 
     # get the root node
     #
