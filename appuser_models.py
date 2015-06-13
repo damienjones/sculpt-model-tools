@@ -243,7 +243,7 @@ class AbstractEmail(OverridableChoicesMixin, models.Model):
             # ... more in-progress unverified states
         )
 
-    address = models.CharField(max_length = 200, db_index = True)    # intentionally long, but MUST BE INDEXED
+    address = models.CharField(max_length = 254, db_index = True)    # intentionally long, but MUST BE INDEXED
     status = models.IntegerField(choices = VERIFICATION_STATES.choices)
 
     date_created = models.DateTimeField(auto_now = False, auto_now_add = False, default = datetime.datetime.utcnow)
