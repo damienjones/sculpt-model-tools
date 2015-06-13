@@ -500,11 +500,24 @@ class SimpleTreeMixin(object):
     #
     @classmethod
     def fetch_children(cls, nodes, generations = 1, q = None, order_by = None, select_related = None):
-        from sculpt.model.tools import ModelTools
+        from sculpt.model_tools.tools import ModelTools
         
         # default sort order for children
         if order_by is None:
             order_by = [ 'display_order' ]
+
+        # it's often useful to return a dictionary
+        # of all the records fetched, indexed by
+        # ID, and we can construct it easily as we
+        # fetch; we'll also permit nodes to be a
+        # dict instead of a list, in which case we
+        # will write back to that dict
+        if isinstance(nodes, dict):
+            all_nodes = nodes
+            nodes = nodes.values()
+
+        else:
+            all_nodes = dict([ (r.pk,r) for r in nodes ])
         
         # we test for equivalence to zero so that
         # -1 can be passed for "all" (dangerous;
@@ -523,7 +536,22 @@ class SimpleTreeMixin(object):
             # the nodes we just queried about
             new_nodes = []
             for n in nodes:
-                new_nodes.extend(n.children_list)
+                for ni in range(len(n.children_list)):
+                    nn = n.children_list[ni]
+                    # it's possible we fetched a
+                    # node that we already had;
+                    # make sure to de-duplicate
+                    if nn.pk in all_nodes:
+                        n.children_list[ni] = all_nodes[nn.pk]
+                    else:
+                        all_nodes[nn.pk] = nn
+
+                    # if we don't already have
+                    # a children_list on this node,
+                    # we need to look it up in the
+                    # next query
+                    if not hasattr(nn, 'children_list'):
+                        new_nodes.append(nn)
             
             if len(new_nodes) == 0:
                 # no children were fetched; we can stop
@@ -531,6 +559,8 @@ class SimpleTreeMixin(object):
                 
             nodes = new_nodes
             
+        return all_nodes
+
     # and, as a special-case method, we allow fetching
     # the children of one specific node (ourselves)
     def get_children(self, generations = 1, q = None, order_by = None, select_related = None):
