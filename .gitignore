@@ -2,3 +2,5 @@
 .DS_Store
 *.pid
 *.pyc
+*.egg-info
+dist
