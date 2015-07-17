@@ -9,18 +9,77 @@ from sculpt.model_tools.models import AbstractAutoHash
 
 import datetime
 
+# Django's auth module contains a User model. With
+# recent versions it's finally possible to work around
+# its limitations, but if you don't want to use and
+# extend Django's built-in User system, you need to
+# build user models based on something else. These
+# abstract base classes provide one such starting
+# point.
+#
+# Reasons you might not want to use Django's User
+# models:
+#
+# 1. Django's user system is linked to the Django
+# admin app. This means your app's users are in the
+# same system as the tool that offers extremely low-
+# level access to your database. Obviously you protect
+# access to this, but ask yourself which is a more
+# likely and harder-to-spot programming mistake:
+# failing to notice that a session is linked to a
+# user AT ALL, or failing to correctly parse which
+# level of access a particular user happens to have?
+#
+# 2. You might have a lot of users and you just don't
+# want to try to put those users into Django's User
+# database, where it's harder to figure out who is
+# supposed to have access and who is not.
+#
+# 3. You are building an app for a client, and when
+# you are done, you need to hand off user management
+# for the application to the client, but you largely
+# do not expect them to be mucking around with the
+# Django admin tool. It's much easier to build tools
+# that work with completely separate models than to
+# make tools that check whether they're allowed to
+# modify specific records.
+#
+# These are brief summaries and this isn't intended
+# as a universal condemnation of full integration
+# with Django's User system. The point is to get you
+# to think about your user management rather than
+# adopt a default solution that might work against
+# you later.
+#
+# If you choose to create a separate user system,
+# two common patterns are supported. "Simple" app
+# users assume that each user has exactly one username
+# and password that can be used to authenticate,
+# and this is derived from Django's AbstractBaseUser
+# in order to pick up its password-handling ability.
+# The other pattern separates credentials from the
+# user, so that you can support multiple authentication
+# schemes for the same account (e.g. initially creating
+# an account with a username/password and then later
+# linking it to a Facebook account). It's more work
+# but more flexible.
+#
+# No matter which you choose, they will pick up both
+# the LoginMixin and AbstractAutoHash mixins.
 
 """ SIMPLE APP USER SETUP"""
 
 # AbstractSimpleAppUser
 #
 # REQUIRED OVERRIDES:
-#   - AUTOHASH_SECRET - A Unique string
+#   - AUTOHASH_SECRET - a unique string (AbstractAutoHash)
 #
 # OPTIONAL OVERRIDES:
-#   - AUTOHASH_FIELDS - The Field values that get hashed together
-#   - CHECK_PASSWORD_METHOD - the name of the function that your authenticate calls on the user instance
-#   - REQUIRED_FIELDS - Set from Abstract Base User, used by /auth/management/commands/createsuperuser.py:Command
+#   - AUTOHASH_FIELDS - fields used to generate hash (AbstractAutoHash)
+#   - CHECK_PASSWORD_METHOD - the name of the function used to check
+#       passwords (AbstractBaseUser)
+#   - REQUIRED_FIELDS - indicates which fields are required
+#       (AbstractBaseUser)
 #
 # Description:
 #   This is to abstract out the most common features
@@ -30,37 +89,35 @@ import datetime
 #   easier to implement than the multiple-auth scheme
 #   user.
 #
+#   This model REQUIRES that usernames be unique. If
+#   you have a situation that allows users to be
+#   deleted, you need to have a strategy for dealing
+#   with usernames if you do not want the default
+#   behavior this restriction implies (that once used,
+#   a username is gone forever).
+#
 class AbstractSimpleAppUser(LoginMixin, AbstractAutoHash, AbstractBaseUser):
     class Meta(AbstractBaseUser.Meta):
         abstract = True
 
-    # Used in the Authenticate function that allows you
-    # to say where your check password validation is
-    # coming from (method name)
+    # AbstractBaseUser settings
     CHECK_PASSWORD_METHOD = 'check_password'
-
-    """ AbstractBaseUser Requirements """
-    # Used in get_username inside the AbstractBaseUser
-    # parent class. ex: getattr(self, self.USERNAME_FIELD)
     USERNAME_FIELD = 'username'
-    # Require that these fields exist when being saved.
-    # Only used by /auth/management/commands/createsuperuser.py:Command
     REQUIRED_FIELDS = [ 'username' ]
 
-    """ AutoHashMixin Requirements """
-    # Keys used to generate the hash field with unique values.
+    # AutoHashMixin settings
     AUTOHASH_FIELDS = [ 'username' ]
 
-    """ Fields """
-    username = models.CharField(max_length = 20)
+    # actual fields on this model
+    username = models.CharField(max_length = 32, unique = True)
 
     # validate a username and password, returning
     # the matched user or None
-    # Note, it always filters on the value from USERNAME_FIELD
+    # NOTE: it always filters on the value from USERNAME_FIELD
     @classmethod
     def authenticate(cls, username, password):
-        user = cls.objects.filter(**{cls.USERNAME_FIELD: username}).first()
-        if user != None and hasattr(user, cls.CHECK_PASSWORD_METHOD) and getattr(user,cls.CHECK_PASSWORD_METHOD)(password):
+        user = cls.objects.filter(**{ cls.USERNAME_FIELD: username }).first()
+        if user is not None and hasattr(user, cls.CHECK_PASSWORD_METHOD) and getattr(user,cls.CHECK_PASSWORD_METHOD)(password):
             return user
 
 

@@ -248,10 +248,10 @@ class LoginMixin(object):
 #
 # Includes functions that are useful in managing passwords
 # that are stored locally as one-way hashes. This is
-# intended for use in models derived from AbstractSimpleAppUser
-# or AbstractAppUserCredential.
-#
-# Liberally cribbed from django.contrib.auth.models.AbstractBaseUser
+# intended for use in models derived from AbstractAppUserCredential.
+# AbstractSimpleAppUser does not need this class because it
+# derives from AbstractBaseUser, from which this is liberally
+# cribbed.
 #
 # OPTIONAL OVERRIDES:
 #   PASSWORD_FIELD - field name that contains the password hash;
