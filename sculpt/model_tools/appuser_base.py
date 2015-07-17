@@ -4,8 +4,8 @@ from django.utils import timezone
 
 from sculpt.ajax.enumerations import ISO_COUNTRIES
 from sculpt.common import Enumeration
+from sculpt.model_tools.base import AbstractAutoHash
 from sculpt.model_tools.mixins import AutoHashMixin, LoginMixin, OverridableChoicesMixin
-from sculpt.model_tools.models import AbstractAutoHash
 
 import datetime
 
@@ -67,7 +67,7 @@ import datetime
 # No matter which you choose, they will pick up both
 # the LoginMixin and AbstractAutoHash mixins.
 
-""" SIMPLE APP USER SETUP"""
+""" SIMPLE APP USER SETUP """
 
 # AbstractSimpleAppUser
 #
@@ -121,15 +121,19 @@ class AbstractSimpleAppUser(LoginMixin, AbstractAutoHash, AbstractBaseUser):
             return user
 
 
-""" COMPLEX APP USER SETUP"""
+""" COMPLEX APP USER SETUP """
 
 # AbstractAppUser
 #
 # REQUIRED OVERRIDES:
-#     - AUTOHASH_SECRET - A Unique string
+#   - AUTOHASH_SECRET - a unique string (AbstractAutoHash)
+#   - authenticate - method used to authenticate a user,
+#       typically by knowing which authentication method
+#       is expected, and checking against credentials of
+#       that type
 #
 # OPTIONAL OVERRIDES:
-#     - AUTOHASH_FIELDS - The Field values that get hashed together
+#   - AUTOHASH_FIELDS - fields used to generate hash (AbstractAutoHash)
 #
 # Description:
 #   Unlike AbstractSimpleAppUser, this class is for users
@@ -137,7 +141,8 @@ class AbstractSimpleAppUser(LoginMixin, AbstractAutoHash, AbstractBaseUser):
 #   For example, by username and password, or by Facebook
 #   token, or by Twitter token, or by unique device ID.
 #   Most of the heavy-lifting is done in the Credentials
-#   class, leaving this an empty shell.
+#   class, leaving this an empty shell. You will still want
+#   to add fields that describe your users.
 #
 class AbstractAppUser(LoginMixin, AbstractAutoHash, models.Model):
     class Meta(object):
@@ -145,7 +150,7 @@ class AbstractAppUser(LoginMixin, AbstractAutoHash, models.Model):
 
     @classmethod
     def authenticate(cls, type, *args, **kwargs):
-        """MUST OVERRIDE"""
+        """ MUST OVERRIDE """
         raise Exception("this function must be overridden")
 
 
