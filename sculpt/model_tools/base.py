@@ -17,10 +17,10 @@ class AbstractAutoHash(AutoHashMixin, models.Model):
     class Meta(object):
         abstract = True
 
-    # Keys used to generate the hash field with unique values.
+    # AutoHashMixin requirements
     AUTOHASH_FIELDS = []
-    # Required.  should be unique to project.
     AUTOHASH_SECRET = None
+
     hash = models.CharField(max_length = 43, unique = True, blank = True, null = True) 
 
 
@@ -35,7 +35,7 @@ class AbstractAutoHash(AutoHashMixin, models.Model):
 # cascade delete, or by a database trigger (horrors). To
 # fully prevent records in a specific table from being deleted,
 # delete permission must be revoked from the database user
-# that the web app uses.
+# that the web app uses. That would be the nuclear option.
 #
 # The primary purpose of this is to simplify soft-delete
 # management.

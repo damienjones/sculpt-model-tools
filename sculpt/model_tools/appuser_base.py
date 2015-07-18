@@ -3,7 +3,7 @@ from django.contrib.auth.models import AbstractBaseUser
 from django.utils import timezone
 
 from sculpt.ajax.enumerations import ISO_COUNTRIES
-from sculpt.common import Enumeration
+from sculpt.common import Enumeration, EnumerationData
 from sculpt.model_tools.base import AbstractAutoHash
 from sculpt.model_tools.mixins import AutoHashMixin, LoginMixin, OverridableChoicesMixin
 
@@ -177,6 +177,7 @@ class AbstractAppUserCredential(OverridableChoicesMixin, models.Model):
     data1 = models.CharField(max_length = 255, blank = True, null = True)  # typically a username or user ID
     data2 = models.CharField(max_length = 255, blank = True, null = True)  # typically a hashed password or auth token
     credential_type = models.IntegerField(choices = CREDENTIAL_TYPES.choices)
+    credential_type_data = property(EnumerationData('CREDENTIAL_TYPES', 'credential_type'))
 
     # We are running the init function to override the credential type choices
     def __init__(self, *args, **kwargs):
@@ -187,7 +188,7 @@ class AbstractAppUserCredential(OverridableChoicesMixin, models.Model):
     # Most commonly used in login to ensure that a user is allowed to come into the site
     # RETURN Boolean
     def authenticate(self, user):
-        """MUST OVERRIDE"""
+        """ MUST OVERRIDE """
         raise Exception("this function must be overridden")
 
 
@@ -223,6 +224,7 @@ class AbstractContactInfo(OverridableChoicesMixin, models.Model):
     state    = models.CharField(max_length =  50, blank = True, null = True)    # or province
     zip      = models.CharField(max_length =  50, blank = True, null = True)    # or postal code
     country  = models.CharField(max_length =   2, blank = True, null = True, choices = COUNTRIES.choices, default = 'US')    # ISO 3166-1-alpha-2; see http://en.wikipedia.org/wiki/ISO_3166-1_alpha-2
+    country_data = property(EnumerationData('COUNTRIES','country'))
 
     # what type of address is it?
     # NOTE: actual concrete implementations may want to override
@@ -232,6 +234,7 @@ class AbstractContactInfo(OverridableChoicesMixin, models.Model):
             (1, 'SHIPPING', 'Shipping'),
         )
     address_type = models.IntegerField(choices = ADDRESS_TYPES.choices, default = 0)
+    address_type_data = property(EnumerationData('ADDRESS_TYPES','address_type'))
 
     # what is the display order/preference?
     # we use this to determine a "best" address for a person
@@ -275,6 +278,7 @@ class AbstractPhoneNumber(OverridableChoicesMixin, models.Model):
             (4, 'FAX', 'Fax'),
         )
     number_type = models.IntegerField(choices = NUMBER_TYPES.choices, default = NUMBER_TYPES.UNKNOWN)
+    number_type_data = property(EnumerationData('NUMBER_TYPES','number_type'))
     
     # are there additional notes about when this number can
     # be called or special instructions?
@@ -307,9 +311,11 @@ class AbstractEmail(OverridableChoicesMixin, models.Model):
 
     address = models.CharField(max_length = 254, db_index = True)    # intentionally long, but MUST BE INDEXED
     status = models.IntegerField(choices = VERIFICATION_STATES.choices)
+    status_data = property(EnumerationData('VERIFICATION_STATES','status'))
 
+    # when is this record vreated?
     date_created = models.DateTimeField(auto_now = False, auto_now_add = False, default = datetime.datetime.utcnow)
-    # This is used to indicate when the current status was made
+    # when is this validated by the end user?
     date_validated  = models.DateTimeField(auto_now = False, auto_now_add = False, blank = True, null = True)
 
     # handle overridable enumerations
