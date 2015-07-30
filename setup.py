@@ -14,10 +14,10 @@ here = path.abspath(path.dirname(__file__))
 
 setup(
 	name='sculpt.model_tools',
-	version='0.1.1',
+	version='0.1',
 	description='A modest set of tools to work with Django models.',
 	long_description='',
-	url='https://github.com/damienjones/sculpt.model_tools',
+	url='https://github.com/damienjones/sculpt-model-tools',
 	author='Damien M. Jones',
 	author_email='damien@codesculpture.com',
 	license='LGPLv2',
@@ -30,7 +30,9 @@ setup(
 	], 
 	keywords='',
 	packages=find_packages(),
-	# install_requires=[],
+	install_requires=[
+		'sculpt-common>=0.2',
+	],
 	# package_data={},
 	# data_files=[],
 	# entry_points={},
