@@ -471,9 +471,9 @@ def set_isolation_mode(isolation_mode):
     from django.db import connection
     cursor = connection.cursor()
     if settings.CAXIAM_DUMP_SQL:
-        print "[pid:%d]" % os.getpid(), 'SETTING ISOLATION MODE', ISOLATION_MODES.get_label(isolation_mode)
+        print "[pid:%d]" % os.getpid(), 'SETTING ISOLATION MODE', ISOLATION_MODES.get_data_by_id(isolation_mode)['id']
     cursor.execute(
-            'commit; set transaction isolation level ' + ISOLATION_MODES.get_label(isolation_mode).replace('_', ' '),
+            'commit; set transaction isolation level ' + ISOLATION_MODES.get_data_by_id(isolation_mode)['id'].replace('_', ' '),
             []
         )
     cursor.fetchone()
