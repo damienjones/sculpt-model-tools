@@ -117,7 +117,7 @@ class ModelTools(object):
         # extract the model class object and the reverse field
         # name (which we need to find the parent object)
         relationship = getattr(qs[0].__class__, related_field).related
-        related_model = relationship.model
+        related_model = relationship.related_model
         related_model_field_name = relationship.field.name
         related_model_field_id = relationship.field.attname
 
