@@ -313,7 +313,7 @@ class AbstractEmail(OverridableChoicesMixin, models.Model):
     status = models.IntegerField(choices = VERIFICATION_STATES.choices)
     status_data = property(EnumerationData('VERIFICATION_STATES','status'))
 
-    # when is this record vreated?
+    # when is this record created?
     date_created = models.DateTimeField(auto_now = False, auto_now_add = False, default = datetime.datetime.utcnow)
     # when is this validated by the end user?
     date_validated  = models.DateTimeField(auto_now = False, auto_now_add = False, blank = True, null = True)

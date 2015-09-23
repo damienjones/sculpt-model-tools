@@ -2,6 +2,7 @@ from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models.manager import Manager, QuerySet
 from sculpt.common import Enumeration
+import os
 
 # ModelTools
 #
@@ -470,7 +471,7 @@ def set_isolation_mode(isolation_mode):
     # statement and we don't want Django/MySQLdb quoting them
     from django.db import connection
     cursor = connection.cursor()
-    if settings.CAXIAM_DUMP_SQL:
+    if settings.SCULPT_DUMP_SQL:
         print "[pid:%d]" % os.getpid(), 'SETTING ISOLATION MODE', ISOLATION_MODES.get_data_by_id(isolation_mode)['id']
     cursor.execute(
             'commit; set transaction isolation level ' + ISOLATION_MODES.get_data_by_id(isolation_mode)['id'].replace('_', ' '),
