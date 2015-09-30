@@ -55,6 +55,10 @@ class AbstractSoftDelete(models.Model):
         self.date_deleted = date_deleted
         self.save(update_fields = ['date_deleted'])
 
+    def undelete(self):
+        self.date_deleted = None
+        self.save(update_fields = ['date_deleted'])
+
     @property
     def is_deleted(self):
         return self.date_deleted != None
