@@ -35,6 +35,11 @@ class LoginRequiredMixin(object):
     # comment for login_session_key, it applies here)
     login_redirect_location = settings.LOGIN_REDIRECT_LOCATION_DEFAULT
 
+    # What to do when you aren't logged in for a HEAD response
+    # By default it will do whatever _get_if_not_logged_in() does
+    def _head_if_not_logged_in(self, *args, **kwargs):
+        return self._get_if_not_logged_in(*args, **kwargs)
+
     # What to do when you aren't logged in for a GET response
     # By default it will do an HTTP response redirect to the
     # redirect location
@@ -49,11 +54,15 @@ class LoginRequiredMixin(object):
         return self._get_if_not_logged_in(*args, **kwargs)
 
     # This will check if you are logged in currently and
-    # dispatch a type response if you are not.
+    # dispatch a type response if you are not, but only if the
+    # request method would normally be handled by the view
     def _check_login(self, request, *args, **kwargs):
         if request.session.get(self.login_session_key) is None:
-            method_name = '_'+request.method.lower()+'_if_not_logged_in'
-            return getattr(self, method_name)(request = request, *args, **kwargs)
+            if callable(getattr(self, request.method.lower(), None)):
+                # regular request method supported, look for a
+                # not-logged-in alternative
+                method_name = '_'+request.method.lower()+'_if_not_logged_in'
+                return getattr(self, method_name)(request = request, *args, **kwargs)
 
     # WARNING: Be very careful when overrideing this function.
     # This almost always needs to run first, so call super()
