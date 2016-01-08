@@ -258,7 +258,9 @@ class ModelTools(object):
         for k,v in attrs.iteritems():
             if not hasattr(record, k):
                 raise AttributeError('record type %s does not have attribute %s' % (record.__class__.__name__, k))
-            if getattr(record, k) != v:
+            if ((v is None and getattr(record, k) is not None) or
+                (v is not None and getattr(record, k) != v)):
+                # because datetime barfs if != None is used
                 setattr(record, k, v)
                 record._caxiam_dirty_list.append(k)
         return record
