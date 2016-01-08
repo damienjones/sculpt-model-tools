@@ -253,17 +253,18 @@ class ModelTools(object):
         # ensure we have a list of dirty fields; note that
         # we don't erase an existing list because it might
         # be dirty fields from a previous invocation
-        if not hasattr(record, '_caxiam_dirty_list'):
-            record._caxiam_dirty_list = []
+        if not hasattr(record, '_sculpt_dirty_list'):
+            record._sculpt_dirty_list = []
         for k,v in attrs.iteritems():
             if not hasattr(record, k):
                 raise AttributeError('record type %s does not have attribute %s' % (record.__class__.__name__, k))
             if ((v is None and getattr(record, k) is not None) or
                 (v is not None and getattr(record, k) is None) or
-                (v is not None and getattr(record, k) != v)):
+                getattr(record, k) != v
+               ):
                 # because datetime barfs if != None is used
                 setattr(record, k, v)
-                record._caxiam_dirty_list.append(k)
+                record._sculpt_dirty_list.append(k)
         return record
 
     # save the record, but only the dirty fields
@@ -279,17 +280,17 @@ class ModelTools(object):
             
             # create an empty dirty list and report we saved
             # everything
-            record._caxiam_dirty_list = []
+            record._sculpt_dirty_list = []
             return [ f.name for f in record._meta.fields ]  # messy Django-internals stuff
             
         if cls.is_dirty(record):
             # we have a dirty list and it's not empty
-            record.save(update_fields = record._caxiam_dirty_list)
+            record.save(update_fields = record._sculpt_dirty_list)
             
             # preserve the dirty list as we're going to wipe
             # it out
-            dirty_list = record._caxiam_dirty_list
-            record._caxiam_dirty_list = []
+            dirty_list = record._sculpt_dirty_list
+            record._sculpt_dirty_list = []
             return dirty_list
 
         # nothing is dirty, don't save
@@ -301,7 +302,7 @@ class ModelTools(object):
     # be explicitly marked dirty by set_and_track_dirty
     @classmethod
     def is_dirty(cls, record):
-        return record.id == None or (hasattr(record, '_caxiam_dirty_list') and record._caxiam_dirty_list)
+        return record.id == None or (hasattr(record, '_sculpt_dirty_list') and record._sculpt_dirty_list)
 
     # given a model class and a dictionary of parameters,
     # pass all the ones that are valid field names into the
