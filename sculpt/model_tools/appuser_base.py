@@ -302,10 +302,10 @@ class AbstractEmail(OverridableChoicesMixin, models.Model):
         abstract = True
 
     VERIFICATION_STATES = Enumeration(
-            (-3, 'BLOCKED'),       ## Owner opted out of all emails (**** needs implementing)
-            (-2, 'VALID'),         ## Known Good
-            (-1, 'INVALID'),       ## Known Bad
-            ( 0, 'UNVERIFIED'),    ## link sent, awaiting response
+            (-3, 'BLOCKED', 'Blocked'),         # Owner opted out of all emails (**** needs implementing)
+            (-2, 'VALID', 'Valid'),             # Known Good
+            (-1, 'INVALID', 'Invalid'),         # Known Bad
+            ( 0, 'UNVERIFIED', 'Unverified'),   # link sent, awaiting response
             # ... more in-progress unverified states
         )
 
