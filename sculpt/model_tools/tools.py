@@ -302,7 +302,7 @@ class ModelTools(object):
     # be explicitly marked dirty by set_and_track_dirty
     @classmethod
     def is_dirty(cls, record):
-        return record.id == None or (hasattr(record, '_sculpt_dirty_list') and record._sculpt_dirty_list)
+        return record.id == None or (hasattr(record, '_sculpt_dirty_list') and bool(record._sculpt_dirty_list))
 
     # given a model class and a dictionary of parameters,
     # pass all the ones that are valid field names into the
