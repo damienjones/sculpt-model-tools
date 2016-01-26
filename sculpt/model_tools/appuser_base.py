@@ -265,7 +265,10 @@ class AbstractPhoneNumber(OverridableChoicesMixin, models.Model):
     title = models.CharField(max_length = 30, blank = True, null = True)
     
     # what is the actual number?
-    number = models.CharField(max_length = 30)
+    # while technically this is required, there may be cases when
+    # records are saved and IDs reserved before data has actually
+    # been entered, so the schema marks this as optional
+    number = models.CharField(max_length = 30, blank = True, null = True)
     
     # what type of number is it?
     # NOTE: actual concrete implementations may want to override
@@ -309,7 +312,11 @@ class AbstractEmail(OverridableChoicesMixin, models.Model):
             # ... more in-progress unverified states
         )
 
-    address = models.CharField(max_length = 254, db_index = True)    # intentionally long, but MUST BE INDEXED
+    # while technically this is required, there may be cases when
+    # records are saved and IDs reserved before data has actually
+    # been entered, so the schema marks this as optional
+    address = models.CharField(max_length = 254, blank = True, null = True, db_index = True)    # intentionally long, but MUST BE INDEXED
+
     status = models.IntegerField(choices = VERIFICATION_STATES.choices)
     status_data = property(EnumerationData('VERIFICATION_STATES','status'))
 
