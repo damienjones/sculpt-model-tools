@@ -146,7 +146,7 @@ class ModelTools(object):
             # a common mistake is to pass a single field name
             # instead of a list; catch this and rework it
             if isinstance(select_related, basestring):
-                order_by = [ select_related ]
+                select_related = [ select_related ]
             rqs = rqs.select_related(*select_related)
 
         # place each related record with its proper parent
